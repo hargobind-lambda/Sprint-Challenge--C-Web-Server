@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include "lib.h"
 
+#define DEBUG
+
 #define BUFSIZE 4096 // max number of bytes we can get at once
 
 /**
@@ -48,6 +50,20 @@ urlinfo_t *parse_url(char *url)
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
+  path = strchr(hostname, '/');
+  *(path) = '\0';
+  path++;
+  port = strchr(hostname, ':');
+  *port = '\0';
+  port++;
+
+#ifdef DEBUG
+  printf("parsed url. hostname: %s, port: %s, path: %s\n", hostname, port, path);
+#endif
+
+  urlinfo->hostname = hostname;
+  urlinfo->path = path;
+  urlinfo->port = port;
 
   return urlinfo;
 }
@@ -71,6 +87,21 @@ int send_request(int fd, char *hostname, char *port, char *path)
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
+#ifdef DEBUG
+  printf("sending request\n");
+#endif
+
+  int request_length = snprintf(request, max_request_size,
+  "GET /%s HTTP/1.1\n"
+  "Host: %s:%s\n"
+  "Connection: close\n"
+  "\n",
+  path, hostname, port);
+
+  int bytes_sent = send(fd, request, request_length, 0);
+#ifdef DEBUG
+  printf("request: \n%s\n---. Num bytes %d\n", request, bytes_sent);
+#endif
 
   return 0;
 }
@@ -92,10 +123,51 @@ int main(int argc, char *argv[])
     4. Call `recv` in a loop until there is no more data to receive from the server. Print the received response to stdout.
     5. Clean up any allocated memory and open file descriptors.
   */
-
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
+
+#ifdef DEBUG
+  printf("input: %s\n", argv[1]);
+#endif
+
+  struct urlinfo_t * url = parse_url(argv[1]);
+
+
+#ifdef DEBUG
+  printf("getting socket and sending request\n");
+#endif
+
+  sockfd = get_socket(url->hostname, url->port);
+
+  int requested = send_request(sockfd, url->hostname, url->port, url->path);
+
+#ifdef DEBUG
+  printf("reading in returned data\n");
+#endif
+
+  while ( (numbytes = recv(sockfd, buf, BUFSIZE -1 ,0)) > 0)
+  {
+    printf("%s\n", buf);
+  }
+
+#ifdef DEBUG
+  printf("freeing memory\n");
+#endif
+  free(url);
+  close(sockfd);
+
+#ifdef DEBUG
+
+#endif
+
+#ifdef DEBUG
+
+#endif
+
+#ifdef DEBUG
+
+#endif
 
   return 0;
 }
