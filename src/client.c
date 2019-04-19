@@ -46,16 +46,41 @@ urlinfo_t *parse_url(char *url)
     5. Set the port pointer to 1 character after the spot returned by strchr.
     6. Overwrite the colon with a '\0' so that we are just left with the hostname.
   */
+  // remove http:// or https://
+  char * hasHttp = strstr(url, "http");
+  if (hasHttp != NULL) {
+    char * hasHttpS = strstr(url, "https://");
+    if (hasHttpS == NULL) {
+      hostname += strlen("http://");
+    } else {
+      hostname += strlen("https://");
+    }
+  }
+
+#ifdef DEBUG
+  printf("url: %s\n", hostname);
+#endif
 
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
   path = strchr(hostname, '/');
-  *(path) = '\0';
-  path++;
+  if (path == NULL) {
+    // if none is provided set path to root if none is provided 
+    path = strdup("/");
+  } else {
+    *(path) = '\0';
+    path++;
+  }
+
   port = strchr(hostname, ':');
-  *port = '\0';
-  port++;
+  if (port == NULL) {
+    // if no port is provided set port to default 80 
+    port = strdup("80");
+  } else {
+    *port = '\0';
+    port++;
+  }
 
 #ifdef DEBUG
   printf("parsed url. hostname: %s, port: %s, path: %s\n", hostname, port, path);
@@ -99,11 +124,12 @@ int send_request(int fd, char *hostname, char *port, char *path)
   path, hostname, port);
 
   int bytes_sent = send(fd, request, request_length, 0);
+
 #ifdef DEBUG
-  printf("request: \n%s\n---. Num bytes %d\n", request, bytes_sent);
+  printf("request:\n---\n%s\n---\n Num bytes %d\n", request, bytes_sent);
 #endif
 
-  return 0;
+  return bytes_sent;
 }
 
 int main(int argc, char *argv[])
@@ -140,7 +166,7 @@ int main(int argc, char *argv[])
 
   sockfd = get_socket(url->hostname, url->port);
 
-  int requested = send_request(sockfd, url->hostname, url->port, url->path);
+  int bytes_sent = send_request(sockfd, url->hostname, url->port, url->path);
 
 #ifdef DEBUG
   printf("reading in returned data\n");
@@ -154,6 +180,7 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
   printf("freeing memory\n");
 #endif
+
   free(url);
   close(sockfd);
 
