@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include "lib.h"
 
+#define DEBUG
+
 #define BUFSIZE 4096 // max number of bytes we can get at once
 
 /**
@@ -44,10 +46,49 @@ urlinfo_t *parse_url(char *url)
     5. Set the port pointer to 1 character after the spot returned by strchr.
     6. Overwrite the colon with a '\0' so that we are just left with the hostname.
   */
+  // remove http:// or https://
+  char * hasHttp = strstr(url, "http");
+  if (hasHttp != NULL) {
+    char * hasHttpS = strstr(url, "https://");
+    if (hasHttpS == NULL) {
+      hostname += strlen("http://");
+    } else {
+      hostname += strlen("https://");
+    }
+  }
+
+#ifdef DEBUG
+  printf("url: %s\n", hostname);
+#endif
 
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
+  path = strchr(hostname, '/');
+  if (path == NULL) {
+    // if none is provided set path to root if none is provided 
+    path = strdup("/");
+  } else {
+    *(path) = '\0';
+    path++;
+  }
+
+  port = strchr(hostname, ':');
+  if (port == NULL) {
+    // if no port is provided set port to default 80 
+    port = strdup("80");
+  } else {
+    *port = '\0';
+    port++;
+  }
+
+#ifdef DEBUG
+  printf("parsed url. hostname: %s, port: %s, path: %s\n", hostname, port, path);
+#endif
+
+  urlinfo->hostname = hostname;
+  urlinfo->path = path;
+  urlinfo->port = port;
 
   return urlinfo;
 }
@@ -71,8 +112,24 @@ int send_request(int fd, char *hostname, char *port, char *path)
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
+#ifdef DEBUG
+  printf("sending request\n");
+#endif
 
-  return 0;
+  int request_length = snprintf(request, max_request_size,
+  "GET /%s HTTP/1.1\n"
+  "Host: %s:%s\n"
+  "Connection: close\n"
+  "\n",
+  path, hostname, port);
+
+  int bytes_sent = send(fd, request, request_length, 0);
+
+#ifdef DEBUG
+  printf("request:\n---\n%s\n---\n Num bytes %d\n", request, bytes_sent);
+#endif
+
+  return bytes_sent;
 }
 
 int main(int argc, char *argv[])
@@ -92,10 +149,52 @@ int main(int argc, char *argv[])
     4. Call `recv` in a loop until there is no more data to receive from the server. Print the received response to stdout.
     5. Clean up any allocated memory and open file descriptors.
   */
-
   ///////////////////
   // IMPLEMENT ME! //
   ///////////////////
+
+#ifdef DEBUG
+  printf("input: %s\n", argv[1]);
+#endif
+
+  struct urlinfo_t * url = parse_url(argv[1]);
+
+
+#ifdef DEBUG
+  printf("getting socket and sending request\n");
+#endif
+
+  sockfd = get_socket(url->hostname, url->port);
+
+  int bytes_sent = send_request(sockfd, url->hostname, url->port, url->path);
+
+#ifdef DEBUG
+  printf("reading in returned data\n");
+#endif
+
+  while ( (numbytes = recv(sockfd, buf, BUFSIZE -1 ,0)) > 0)
+  {
+    printf("%s\n", buf);
+  }
+
+#ifdef DEBUG
+  printf("freeing memory\n");
+#endif
+
+  free(url);
+  close(sockfd);
+
+#ifdef DEBUG
+
+#endif
+
+#ifdef DEBUG
+
+#endif
+
+#ifdef DEBUG
+
+#endif
 
   return 0;
 }
